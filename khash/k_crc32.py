@@ -5,6 +5,11 @@
 # 计算法是反向的, 比较简单的实现
 # 查表法是正向的, 实现比较复杂
 
+# debug 算法特征为
+# 反向算法: 0xEDB88320
+# 正向算法: 0x04c11db7
+# 查表法: kcrc32_table() 函数中的 table 也会出现 0x04c11db7
+
 
 # 计算部分
 def reverse_bits(value: int, bit_len: int):

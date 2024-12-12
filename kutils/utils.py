@@ -12,10 +12,16 @@ def array_hex_dump(table: List, shape: (int, int), bytes_len: int | None = None)
     :param bytes_len: 数组每个元素的长度, 如果为None, 则使用默认的hex打印
     :return:
     """
+    total = shape[0] * shape[1]
+    if len(table) < total:
+        table += [None] * (total - len(table))
 
     def khex(x, bytes_len):
         # debug 每个字节用两位十六进制表示
-        return f"0x{x:0{bytes_len * 2}x}"
+        if x is None:
+            return "IGNORE"
+        else:
+            return f"0x{x:0{bytes_len * 2}x}"
 
     array_reshape = np.array(table).reshape(shape)
     if bytes_len is None:
@@ -23,7 +29,7 @@ def array_hex_dump(table: List, shape: (int, int), bytes_len: int | None = None)
     else:
         array_hex = np.vectorize(khex)(array_reshape, bytes_len)
     for element in array_hex:
-        print(",".join(element) + ",")
+        print(",".join([str(e) for e in element if e != "IGNORE"]) + ",")
 
 
 if __name__ == '__main__':
