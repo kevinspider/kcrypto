@@ -13,8 +13,20 @@ aes
 2. 192 -> 12轮
 3. 256 -> 14轮
 """
-
 import struct
+from enum import Enum
+
+
+class AesMode(Enum):
+    ECB = 1
+    CBC = 2
+
+
+class PadMode(Enum):
+    pkcs7_pad = 1
+    zero_pad = 2
+    unpad = 3
+
 
 SBOX = (
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -35,7 +47,15 @@ SBOX = (
     0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16,
 )
 
-RCON = (0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36)  # 11个 0x0 用不到占位
+RCON = (
+    0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36,
+)  # 11个; 所以为 0 的 0x0 用不到占位; C中常用0x8d来占位 反正都用不到
+
+key_len_loop_num = {
+    16: 10,  # debug aes 128; key is 16 bytes, loop is 10
+    24: 12,  # debug aes 192; key is 24 bytes, loop is 12
+    32: 14  # debug aes 256; key is 32 bytes, loop is 14
+}
 
 
 # debug 填充模式
@@ -47,7 +67,7 @@ def pad_pkcs7(message: bytes, bytes_len: int) -> bytes:
 
 
 def pad_zero(message: bytes, bytes_len: int) -> bytes:
-    # debug 输入如果刚好是分组长度, 则不需要填充
+    # debug 输入如果刚好是分组长度, 则不需���填充
     if len(message) % bytes_len == 0:
         return message
     else:
@@ -61,11 +81,57 @@ def pad_unpad(message: bytes, bytes_len: int) -> bytes:
     assert len(message) % bytes_len == 0
     return message
 
+
+# debug 密钥扩展计算部分
+def bytes_to_matrix(text: bytes):
+    return [list(text[i: i + 4]) for i in range(0, len(text), 4)]
+
+
+def shift_left(array, num):
+    """
+    :param array: 需要循环左移的数组
+    :param num: 循环左移的位数
+    :return: 返回循环左移之后的 array
+    """
+    return array[num:] + array[:num]
+
+
+def g(array, index):
+    # 1. 循环左移1字节
+    array = shift_left(array, 1)
+    # 2. 字节替换 将array中的每个字节都使用SBOX值替换
+    array = [SBOX[i] for i in array]
+    # 3. 首字节和 rcon 对应索引进行异或
+    array = [RCON[index] ^ array[0]] + array[1:]
+    return array
+
+
+def xor_array(array1, arrary2):
+    assert len(arrary2) == len(array1)
+    return [array1[i] ^ arrary2[i] for i in range(len(array1))]
+
+
+def show_round_keys(round_kyes: list[list], loop_num: int):
+    kList = [[] for i in range(loop_num + 1)]
+    for i in range(len(round_kyes)):
+        kList[i // 4] += round_kyes[i]
+    for i in range(len(kList)):
+        print("K%02d: " % i + "".join("%02X" % k for k in kList[i]))
+
+
+# debug 加密计算部分
+def add_round_keys(state: list[list[int]], round_keys: list[list[int]]):
+    result = [[] for i in range(4)]
+    for i in range(4):
+        result[i] = xor_array(state[i], round_keys[i])
+    return result
+
+
 # debug 密钥编排 aes_key_schedule
-def aes_key_schedule(master_key:bytes, loop_num: int) -> list:
+def aes_key_schedule(master_key: bytes, nk: int) -> list:
     """
     :param master_key: 输入的主密钥
-    :param loop_num: 密钥编排的循环次数; aes128->10轮, aes192->12轮, aes256 -> 14轮
+    :param nk: nk = len(master_key) // 4
     :return: list: 子密钥字节数组;
     :descript:
         生成
@@ -74,26 +140,89 @@ def aes_key_schedule(master_key:bytes, loop_num: int) -> list:
         返回
             aes128-> 11 * 16 字节 对应 K0 - K10 一共11个, k0 是主密钥
             aes192-> 13 * 16字节 对应 K0 - K12 一共13个, k0-k1的一半 是主密钥
-            aes256-> 15 * 16字节 K0 - K15 一共16个, k0-k1 是主密钥
+            aes256-> 15 * 16字节 K0 - K14 一共15个, k0-k1 是主密钥
     """
-    # 初始化计算子密钥W
-    W = []
+    # 初始化计算子密钥W 二维数组的形式, round_keys 44 个元素, 每个元素 4个字节[]
+    # round_keys = [[x, x, x, x], ...]
 
-    # W0,W1,W2,W4
-    print(master_key.hex())
-    W[0:4] = struct.unpack(">4I", master_key)
-    print(W)
+    assert len(master_key) in key_len_loop_num
+
+    loop_num = key_len_loop_num[len(master_key)]  # 10 or 12 or 14
+    round_keys_len = (loop_num + 1) * 4  # debug aes128 是 (10 + 1) *4 = 44个
+    round_keys = [[0] * 4 for i in range(round_keys_len)]  # debug [ [x,x,x,x] * 44 ] 二维数组
+    # nk = len(master_key) // 4  # debug aes128->4 , aes192->6, aes256->8
+    """
+    nk 的作用
+    密钥扩展逻辑: 在密钥扩展过程中，nk 决定了何时需要调用 g 函数进行字节替换和 RCON 异或操作。具体来说，每 nk 个字会触发一次 g 函数的调用。
+    特殊处理: 对于 AES-256，nk 的值为 8，这意味着在密钥扩展中，每 8 个字会进行一次 g 函数调用，而在第 4 个字时会进行 SBOX 替换操作。
+    """
+    for i in range(0, round_keys_len):
+        if 0 <= i < nk:
+            tmp_key = struct.unpack(f">{nk}I", master_key)[i].to_bytes(4, "big")
+            round_keys[i] = list(struct.unpack(">4B", tmp_key))
+        elif i % nk == 0:
+            index = i // nk
+            round_keys[i] = xor_array(g(round_keys[i - 1], index), round_keys[i - nk])
+        # debug 处理 AES-256 的额外步骤; AES-256 在每个 4 个字节的时候, 需要额外的 SBOX 替换操作
+        elif nk > 6 and i % nk == 4:
+            round_keys[i] = xor_array([SBOX[b] for b in round_keys[i - 1]], round_keys[i - nk])
+        else:
+            round_keys[i] = xor_array(round_keys[i - 1], round_keys[i - nk])
+
+    show_round_keys(round_keys, loop_num)
+    return round_keys
 
 
+# debug aes_encrypt_ecb()
+def aes_encrypt_ecb(message: bytes, master_key: bytes, mode: AesMode, pad: PadMode):
+    # nk 初始化 4 or 6 or 8
+    nk = len(master_key) // 4
+    # 生成子密钥 round_keys 4个元素组成了一个子密钥K, 第一次使用K00, 一次类推
+    round_keys = aes_key_schedule(master_key, nk)
+    # 填充
+    if pad == PadMode.pkcs7_pad:
+        message = pad_pkcs7(message, 16)
+    elif pad == PadMode.zero_pad:
+        message = pad_zero(message, 16)
+    elif pad == PadMode.unpad:
+        message = pad_unpad(message, 16)
+    else:
+        raise "未定义的Pad模式"
+
+    # 每16个字节加密一次
+    chunks = [message[i: i + 16] for i in range(0, len(message), 16)]
+    for chunk in chunks:
+        # debug 生成state, 存储的是进来的分组16个字节
+        # 先切割成4字节的 list[bytes]
+        state = [chunk[i: i + 4] for i in range(0, len(chunk), 4)]
+        # 再将list[bytes] 转为 list[list[int]]
+        state = [list(struct.unpack(">4B", each)) for each in state]
+        # debug 轮密钥加 state和 master_key输入部分
+        # debug 初始化密钥轮相加
+        state = add_round_keys(state, round_keys[0:4])
+
+        # debug 主体循环 [1,n-1]次
+            # 字节替
+            # 行移位
+            # 列混淆
+            # 轮密钥加
+
+        # debug 最后一次循环, 缺少一个列混淆
+        # 字节替
+        # 行移位
+        # 轮密钥加
 
 
 if __name__ == '__main__':
-    # message = "kevinSpider".encode("utf-8")
-    # message = bytes.fromhex("6b6576696e5370696465720505050505")
-    # message = pad_zero(message, 16)
-    # print(message.hex())
+    # master_key = "11223344556677881122334455667788"
+    # aes_key_schedule(bytes.fromhex(master_key))
 
-    master_key = "2b7e151628aed2a6abf7158809cf4f3c"
-    aes_key_schedule(bytes.fromhex(master_key), 10)
+    # master_key = "112233445566778811223344556677881122334455667788"
+    # aes_key_schedule(bytes.fromhex(master_key))
 
+    # master_key = "1122334455667788112233445566778811223344556677881122334455667788"
+    # aes_key_schedule(bytes.fromhex(master_key))
 
+    message = bytes.fromhex("00112233445566778899aabbccddeeff")
+    key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c")
+    aes_encrypt_ecb(message, key, AesMode.ECB, PadMode.unpad)
