@@ -72,9 +72,10 @@ def ksm3(message: bytes) -> str:
     # 填充
     message = pad_message(message)
 
-    # 拆分
+    # 拆分, 64个字节一组
     chunks = [message[i: i + 64] for i in range(0, len(message), 64)]
 
+    # 运算部分
     for chunk in chunks:
         # 扩展
         # debug W 和 W' 生成
@@ -101,6 +102,7 @@ def ksm3(message: bytes) -> str:
         g = h6
         h = h7
 
+        # debug 主循环 64轮
         for j in range(64):
             # debug 中间变量ss1,ss2,tt1,tt2
             # SS1 ← ((A ≪ 12) + E + (Tj ≪ j)) ≪ 7 debug 这里的j会超过32bit 算法文档中没有 %32 实际需要
@@ -128,6 +130,7 @@ def ksm3(message: bytes) -> str:
             # E ← P0(TT2)
             e = p0(tt2)
 
+        # debug 一个分组长度计算完成后, 更新结果 作为下一次循环的入参
         h0 = (a ^ h0) & 0xFFFFFFFF
         h1 = (b ^ h1) & 0xFFFFFFFF
         h2 = (c ^ h2) & 0xFFFFFFFF
