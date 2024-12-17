@@ -16,6 +16,8 @@ aes
 import struct
 from enum import Enum
 
+from hexdump import hexdump
+
 
 class AesMode(Enum):
     ECB = 1
@@ -27,6 +29,11 @@ class PadMode(Enum):
     zero_pad = 2
     unpad = 3
 
+key_len_loop_num = {
+    16: 10,  # debug aes 128; key is 16 bytes, loop is 10
+    24: 12,  # debug aes 192; key is 24 bytes, loop is 12
+    32: 14  # debug aes 256; key is 32 bytes, loop is 14
+}
 
 SBOX = (
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -50,12 +57,6 @@ SBOX = (
 RCON = (
     0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36,
 )  # 11个; 所以为 0 的 0x0 用不到占位; C中常用0x8d来占位 反正都用不到
-
-key_len_loop_num = {
-    16: 10,  # debug aes 128; key is 16 bytes, loop is 10
-    24: 12,  # debug aes 192; key is 24 bytes, loop is 12
-    32: 14  # debug aes 256; key is 32 bytes, loop is 14
-}
 
 
 # debug 填充模式
@@ -83,9 +84,6 @@ def pad_unpad(message: bytes, bytes_len: int) -> bytes:
 
 
 # debug 密钥扩展计算部分
-def bytes_to_matrix(text: bytes):
-    return [list(text[i: i + 4]) for i in range(0, len(text), 4)]
-
 
 def shift_left(array, num):
     """
@@ -126,6 +124,47 @@ def add_round_keys(state: list[list[int]], round_keys: list[list[int]]):
         result[i] = xor_array(state[i], round_keys[i])
     return result
 
+
+def sub_bytes(state: list[list[int]]):
+    result = [[] for i in range(4)]
+    for i in range(4):
+        result[i] = [SBOX[i] for i in state[i]]
+    return result
+
+
+def shift_rows(state: list[list[int]]):
+    state[0][1], state[1][1], state[2][1], state[3][1] = state[1][1], state[2][1], state[3][1], state[0][1]
+    state[0][2], state[1][2], state[2][2], state[3][2] = state[2][2], state[3][2], state[0][2], state[1][2]
+    state[0][3], state[1][3], state[2][3], state[3][3] = state[3][3], state[0][3], state[1][3], state[2][3]
+    return state
+
+def mix_columns(state: list[list[int]]):
+    def mul02(value):
+        if value < 0x80:
+            res = (value << 1)
+        else:
+            res = (value << 1) ^ 0x1b
+        res = res % 0x100
+        return res
+
+    def mul03(value):
+        res = mul02(value) ^ value
+        return res
+
+    for i in range(4):
+        s0 = mul02(state[i][0]) ^ mul03(state[i][1]) ^ state[i][2] ^ state[i][3]
+        s1 = state[i][0] ^ mul02(state[i][1]) ^ mul03(state[i][2]) ^ state[i][3]
+        s2 = state[i][0] ^ state[i][1] ^ mul02(state[i][2]) ^ mul03(state[i][3])
+        s3 = mul03(state[i][0]) ^ state[i][1] ^ state[i][2] ^ mul02(state[i][3])
+        state[i][0] = s0
+        state[i][1] = s1
+        state[i][2] = s2
+        state[i][3] = s3
+    return state
+
+def state_to_text(state:list[list[int]]):
+    text = sum(state, [])
+    return "".join("%02x" % k for k in text)
 
 # debug 密钥编排 aes_key_schedule
 def aes_key_schedule(master_key: bytes, nk: int) -> list:
@@ -173,10 +212,12 @@ def aes_key_schedule(master_key: bytes, nk: int) -> list:
     return round_keys
 
 
-# debug aes_encrypt_ecb()
-def aes_encrypt_ecb(message: bytes, master_key: bytes, mode: AesMode, pad: PadMode):
-    # nk 初始化 4 or 6 or 8
+# debug aes ecb 模式
+def aes_encrypt_ecb(message: bytes, master_key: bytes, pad: PadMode) -> str:
+    # nk 初始化 4 or 6 or 8 控制了密钥编排中g函数的使用
     nk = len(master_key) // 4
+    # 根据key长度确定循环次数
+    loop_num = key_len_loop_num[len(master_key)]
     # 生成子密钥 round_keys 4个元素组成了一个子密钥K, 第一次使用K00, 一次类推
     round_keys = aes_key_schedule(master_key, nk)
     # 填充
@@ -187,8 +228,10 @@ def aes_encrypt_ecb(message: bytes, master_key: bytes, mode: AesMode, pad: PadMo
     elif pad == PadMode.unpad:
         message = pad_unpad(message, 16)
     else:
-        raise "未定义的Pad模式"
+        raise ValueError("未定义的Pad模式")
 
+    # 初始化结果
+    aes_result = ""
     # 每16个字节加密一次
     chunks = [message[i: i + 16] for i in range(0, len(message), 16)]
     for chunk in chunks:
@@ -200,29 +243,126 @@ def aes_encrypt_ecb(message: bytes, master_key: bytes, mode: AesMode, pad: PadMo
         # debug 轮密钥加 state和 master_key输入部分
         # debug 初始化密钥轮相加
         state = add_round_keys(state, round_keys[0:4])
-
-        # debug 主体循环 [1,n-1]次
+        # debug 主体循环 [1,n]次 最后一次单独
+        for i in range(1, loop_num):
             # 字节替
+            state = sub_bytes(state)
             # 行移位
+            state = shift_rows(state)
             # 列混淆
+            state = mix_columns(state)
             # 轮密钥加
+            state = add_round_keys(state, round_keys[4 * i: 4 * (i + 1)])
 
         # debug 最后一次循环, 缺少一个列混淆
         # 字节替
+        state = sub_bytes(state)
         # 行移位
-        # 轮密钥加
+        state = shift_rows(state)
+        # 轮密钥加 最后一次使用最后的一个轮密钥
+        state = add_round_keys(state, round_keys[-4:])
+        aes_result += state_to_text(state)
+    return aes_result
+
+# debug aes cbc 模式
+def aes_encrypt_cbc(message: bytes, master_key: bytes, master_iv: bytes, pad: PadMode) -> str:
+    # nk 初始化 4 or 6 or 8 控制了密钥编排中g函数的使用
+    nk = len(master_key) // 4
+    # 根据key长度确定循环次数
+    loop_num = key_len_loop_num[len(master_key)]
+    # 生成子密钥 round_keys 4个元素组成了一个子密钥K, 第一次使用K00, 一次类推
+    round_keys = aes_key_schedule(master_key, nk)
+
+    # 填充
+    if pad == PadMode.pkcs7_pad:
+        message = pad_pkcs7(message, 16)
+    elif pad == PadMode.zero_pad:
+        message = pad_zero(message, 16)
+    elif pad == PadMode.unpad:
+        message = pad_unpad(message, 16)
+    else:
+        raise ValueError("未定义的Pad模式")
+
+    # 初始化结果
+    aes_result = ""
+    # 初始化iv
+    iv = [master_iv[i: i + 4] for i in range(0, len(master_iv), 4)]
+    iv = [list(struct.unpack(">4B", each)) for each in iv]
+
+    # 每16个字节加密一次
+    chunks = [message[i: i + 16] for i in range(0, len(message), 16)]
+    for chunk in chunks:
+        # debug 生成state, 存储的是进来的分组16个字节
+        # 先切割成4字节的 list[bytes]
+        state = [chunk[i: i + 4] for i in range(0, len(chunk), 4)]
+        # 再将list[bytes] 转为 list[list[int]]
+        state = [list(struct.unpack(">4B", each)) for each in state]
+
+        # important cbc模式, 第一次的时候明文16字节和初始iv进行异或
+        for i in range(4):
+            state[i] = xor_array(state[i], iv[i])
+
+        # debug 轮密钥加 state和 master_key输入部分
+        # debug 初始化密钥轮相加
+        state = add_round_keys(state, round_keys[0:4])
+        # debug 主体循环 [1,n]次 最后一次单独
+        for i in range(1, loop_num):
+            # 字节替
+            state = sub_bytes(state)
+            # 行移位
+            state = shift_rows(state)
+            # 列混淆
+            state = mix_columns(state)
+            # 轮密钥加
+            state = add_round_keys(state, round_keys[4 * i: 4 * (i + 1)])
+
+        # debug 最后一次循环, 缺少一个列混淆
+        # 字节替
+        state = sub_bytes(state)
+        # 行移位
+        state = shift_rows(state)
+        # 轮密钥加 最后一次使用最后的一个轮密钥
+        state = add_round_keys(state, round_keys[-4:])
+
+        # important 结果作为下一轮的IV 参与计算, 下一轮的IV会和下一轮输入明文进行异或操作
+        iv = state
+        aes_result += state_to_text(state)
+    return aes_result
 
 
 if __name__ == '__main__':
-    # master_key = "11223344556677881122334455667788"
-    # aes_key_schedule(bytes.fromhex(master_key))
 
-    # master_key = "112233445566778811223344556677881122334455667788"
-    # aes_key_schedule(bytes.fromhex(master_key))
+    # message = bytes.fromhex("00112233445566778899aabbccddeeff")
+    # print("message is", message.hex())
+    # key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c2b7e151628aed2a6abf7158809cf4f3c")
+    # print("master_key is", key.hex())
+    # result = aes_encrypt_ecb(message, key, PadMode.pkcs7_pad)
+    # print("aes_result", result)
+    # hexdump(bytes.fromhex(result))
 
-    # master_key = "1122334455667788112233445566778811223344556677881122334455667788"
-    # aes_key_schedule(bytes.fromhex(master_key))
 
-    message = bytes.fromhex("00112233445566778899aabbccddeeff")
-    key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c")
-    aes_encrypt_ecb(message, key, AesMode.ECB, PadMode.unpad)
+    """
+    key is 
+    2b7e151628aed2a6abf7158809cf4f3c
+    iv is 
+    000102030405060708090a0b0c0d0e0f
+    message is 
+    6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710
+    result is 
+    7649abac8119b246cee98e9b12e9197d5086cb9b507219ee95db113a917678b273bed6b8e3c1743b7116e69e222295163ff1caa1681fac09120eca307586e1a7
+    """
+
+    message = bytes.fromhex("010203")
+    message = "kevinSpiderkevinSpiderkevinSpiderkevinSpiderkevinSpider".encode("utf-8")
+    print("message is", message.hex())
+    key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c2b7e151628aed2a6")
+    print("master_key is", key.hex())
+    iv = bytes.fromhex("112233445566778899aabbccddeeff00")
+    print("iv is", iv.hex())
+    result = aes_encrypt_cbc(message, key, iv, PadMode.pkcs7_pad)
+    print("aes_cbc_result", result)
+    hexdump(bytes.fromhex(result))
+
+    # aes 128 192 256
+    # ecb cbc
+    # pkcs7 zero unpad
