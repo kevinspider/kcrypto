@@ -29,10 +29,11 @@ class PadMode(Enum):
     zero_pad = 2
     unpad = 3
 
+# important aes 密钥长度和循环次数对应表
 key_len_loop_num = {
-    16: 10,  # debug aes 128; key is 16 bytes, loop is 10
-    24: 12,  # debug aes 192; key is 24 bytes, loop is 12
-    32: 14  # debug aes 256; key is 32 bytes, loop is 14
+    16: 10,  #  aes 128; key is 16 bytes, loop is 10
+    24: 12,  #  aes 192; key is 24 bytes, loop is 12
+    32: 14  #  aes 256; key is 32 bytes, loop is 14
 }
 
 SBOX = (
@@ -138,6 +139,7 @@ def shift_rows(state: list[list[int]]):
     state[0][3], state[1][3], state[2][3], state[3][3] = state[3][3], state[0][3], state[1][3], state[2][3]
     return state
 
+
 def mix_columns(state: list[list[int]]):
     def mul02(value):
         if value < 0x80:
@@ -162,9 +164,11 @@ def mix_columns(state: list[list[int]]):
         state[i][3] = s3
     return state
 
-def state_to_text(state:list[list[int]]):
+
+def state_to_text(state: list[list[int]]):
     text = sum(state, [])
     return "".join("%02x" % k for k in text)
+
 
 # debug 密钥编排 aes_key_schedule
 def aes_key_schedule(master_key: bytes, nk: int) -> list:
@@ -264,6 +268,7 @@ def aes_encrypt_ecb(message: bytes, master_key: bytes, pad: PadMode) -> str:
         aes_result += state_to_text(state)
     return aes_result
 
+
 # debug aes cbc 模式
 def aes_encrypt_cbc(message: bytes, master_key: bytes, master_iv: bytes, pad: PadMode) -> str:
     # nk 初始化 4 or 6 or 8 控制了密钥编排中g函数的使用
@@ -329,9 +334,16 @@ def aes_encrypt_cbc(message: bytes, master_key: bytes, master_iv: bytes, pad: Pa
         aes_result += state_to_text(state)
     return aes_result
 
+# debug 入口函数
+def aes_encrypt(message: bytes, master_key: bytes, master_iv: bytes | None = None, mode: AesMode = AesMode.ECB, pad: PadMode = PadMode.pkcs7_pad):
+    if mode == AesMode.ECB:
+        return aes_encrypt_ecb(message, master_key, pad)
+    elif mode == AesMode.CBC:
+        return aes_encrypt_cbc(message, master_key, master_iv, pad)
+    else:
+        raise ValueError("unsupport AesMode, just AesMode.CBC or AesMode.EBC")
 
 if __name__ == '__main__':
-
     # message = bytes.fromhex("00112233445566778899aabbccddeeff")
     # print("message is", message.hex())
     # key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c2b7e151628aed2a6abf7158809cf4f3c")
@@ -339,7 +351,6 @@ if __name__ == '__main__':
     # result = aes_encrypt_ecb(message, key, PadMode.pkcs7_pad)
     # print("aes_result", result)
     # hexdump(bytes.fromhex(result))
-
 
     """
     key is 
