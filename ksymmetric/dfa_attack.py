@@ -1,6 +1,6 @@
 import phoenixAES
 from itertools import islice
-from keyN2key0 import aes_key_revese
+from keyN_to_key0 import aes_key_revese
 
 # debug 第一行提供正确的密文
 cipherText = """
