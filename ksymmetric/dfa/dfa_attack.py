@@ -207,7 +207,7 @@ bd83351bb0b65d22b1d645b6a03706b4
 bd83e8d4b0f5d722069c45b6a93706ed
 """
 
-with open("../tracefile", "wb+") as f:
+with open("tracefile", "wb+") as f:
     f.write(cipherText.encode("utf-8"))
     f.seek(0)
     data = list(islice(f, 1, 2))[0].strip(b"\n")
@@ -215,7 +215,7 @@ with open("../tracefile", "wb+") as f:
 
 
 # 参数 3 代表解密
-result = phoenixAES.crack_file('../tracefile', [], True, False, 3)
+result = phoenixAES.crack_file('tracefile', [], True, False, 3)
 if result is not None:
     if "." in result:
         print("result is", result)
