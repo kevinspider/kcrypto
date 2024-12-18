@@ -17,8 +17,19 @@ kcrypto
 │   │   ├── keyN_to_key0.py
 │   │   └── tracefile
 │   ├── k_aes.py
-│   └── k_rc4.py
+│   ├── k_rc4.py
+│   └── tracefile
 ├── kutils
 │   └── utils.py
 └── README.md
 ```
+
+todo
+- 对称加密
+    - des
+    - sm4
+- 非对称加密
+    - rsa
+- 编码
+    - base64 encode
+    - base64 decode
