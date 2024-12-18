@@ -17,12 +17,15 @@ kcrypto
 ├── khmac
 │   └── k_hmac.py
 ├── ksymmetric
-│   ├── dfa_attack.py
+│   ├── dfa
+│   │   ├── dfa_attack.py
+│   │   └── keyN_to_key0.py
 │   ├── k_aes.py
-│   ├── keyN2key0.py
+│   ├── k_rc4.py
 │   └── tracefile
 ├── kutils
 │   └── utils.py
 └── README.md
+
 
 ```
