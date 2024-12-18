@@ -1,8 +1,3 @@
-# 目录结构
-
-```bash
-tree | grep -vE "__pycache__|*.pyc"
-```
 
 ```log
 kcrypto
@@ -19,13 +14,11 @@ kcrypto
 ├── ksymmetric
 │   ├── dfa
 │   │   ├── dfa_attack.py
-│   │   └── keyN_to_key0.py
+│   │   ├── keyN_to_key0.py
+│   │   └── tracefile
 │   ├── k_aes.py
-│   ├── k_rc4.py
-│   └── tracefile
+│   └── k_rc4.py
 ├── kutils
 │   └── utils.py
 └── README.md
-
-
 ```
