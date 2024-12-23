@@ -2,6 +2,8 @@
 ```log
 kcrypto
 ├── demo.py
+├── kencode
+│   └── k_base64.py
 ├── khash
 │   ├── k_crc32.py
 │   ├── k_md5.py
