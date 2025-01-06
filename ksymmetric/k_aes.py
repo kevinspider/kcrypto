@@ -115,9 +115,10 @@ def pad_pkcs7(message: bytes, bytes_len: int) -> bytes:
 
 
 def pad_zero(message: bytes, bytes_len: int) -> bytes:
-    # debug 输入如果刚好是分组长度, 则不需���填充
+    # debug 输入刚好为一个分组长度, 则也需要填充
     if len(message) % bytes_len == 0:
-        return message
+        message += bytes([0x0] * bytes_len)
+        return message 
     else:
         pad = bytes_len - (len(message) % bytes_len)
         message += bytes([0x0] * pad)
@@ -434,46 +435,14 @@ if __name__ == '__main__':
     iv is 
     000102030405060708090a0b0c0d0e0f
     message is 
-    6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710
+    00112233445566778899101112131415
     result is 
     7649abac8119b246cee98e9b12e9197d5086cb9b507219ee95db113a917678b273bed6b8e3c1743b7116e69e222295163ff1caa1681fac09120eca307586e1a7
     """
 
-    # message = bytes.fromhex("010203")
-    # for i in range(200):
-    message = "kevinSpider1871293845798helloworld".encode("utf-8")
-    # print("message is", message.hex())
+    
+    message = bytes.fromhex("00112233445566778899101112131415")
     key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c")
-    # print("master_key is", key.hex())
-    iv = bytes.fromhex("112233445566778899aabbccddeeff00")
-    # print("iv is", iv.hex())
-    # result = aes_encrypt_cbc(message, key, iv, PadMode.pkcs7_pad)
-    # print("aes_cbc_result", result)
-    # hexdump(bytes.fromhex(result))
-
-    result = aes_encrypt(message, key, iv, AesMode.CBC, PadMode.pkcs7_pad)
-    # print("right", result[:16 * 2])
-    # print("aes_cbc_result", result)
-    # hexdump(bytes.fromhex(result))
-
-    # aes 128 192 256
-    # ecb cbc
-    # pkcs7 zero unpad
-
-    """
-    aes 白盒攻击
-    在倒数两次列混淆之间, 修改state的一个字节即可
-    可用的时机点:
-        倒数第三次轮密钥加 or
-        倒数第二次字节替换 or  * 一般选择这里, 因为比较容易看出来
-        倒数第二次行移位   or
-        倒数第二次轮密钥加 
-    """
-    for i in range(200):
-        message = "kevinSpider1871293845798helloworld".encode("utf-8")
-        # print("message is", message.hex())
-        key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c")
-        # print("master_key is", key.hex())
-        iv = bytes.fromhex("112233445566778899aabbccddeeff00")
-        result = aes_encrypt(message, key, iv, AesMode.CBC, PadMode.pkcs7_pad)
-        print(result[:16 * 2])
+    iv = bytes.fromhex("000102030405060708090a0b0c0d0e0f")
+    result = aes_encrypt(message, key, iv, AesMode.CBC, PadMode.zero_pad)
+    print(result)
