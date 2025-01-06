@@ -32,6 +32,3 @@ todo
     - sm4
 - 非对称加密
     - rsa
-- 编码
-    - base64 encode
-    - base64 decode
