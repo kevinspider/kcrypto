@@ -1,5 +1,7 @@
 # base64 编码表
 base64_table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+# 更改编码表
+base64_table = "abcdefghijklmnopqrstuvwxyz!@#$%^&*()ABCDEFGHIJKLMNOPQRSTUVWXYZ+/"
 
 
 def kbase64_encode(message: bytes) -> str:
@@ -34,15 +36,15 @@ def kbase64_encode(message: bytes) -> str:
         if counts == 1:
             # 剩余 1 字节时，填充 2 个 '='
             cipher.append(base64_table[(buffer[0] & 0x03) << 4])
-            cipher.append('=')
-            cipher.append('=')
+            cipher.append("=")
+            cipher.append("=")
         elif counts == 2:
             # 剩余 2 字节时，填充 1 个 '='
             cipher.append(base64_table[((buffer[0] & 0x03) << 4) | (buffer[1] >> 4)])
             cipher.append(base64_table[(buffer[1] & 0x0F) << 2])
-            cipher.append('=')
+            cipher.append("=")
 
-    return ''.join(cipher)
+    return "".join(cipher)
 
 
 def kbase64_decode(cipher: str) -> bytes:
@@ -52,7 +54,7 @@ def kbase64_decode(cipher: str) -> bytes:
     """
 
     base64_reverse_map = {char: idx for idx, char in enumerate(base64_table)}
-    base64_reverse_map['='] = 64  # '=' 表示填充字符
+    base64_reverse_map["="] = 64  # '=' 表示填充字符
 
     # 初始化变量
     counts = 0
@@ -87,14 +89,21 @@ def kbase64_decode(cipher: str) -> bytes:
 # 测试用例
 if __name__ == "__main__":
 
-    test_cases = [
-        b"A",  # 单字节输入
-        b"AB",  # 两字节输入
-        b"ABC",  # 三字节输入
-        b"Hello",  # 普通字符串
-        b"Base64",  # 偶数字符
-        b"",  # 空输入
-    ]
+    # test_cases = [
+    #     b"A",  # 单字节输入
+    #     b"AB",  # 两字节输入
+    #     b"ABC",  # 三字节输入
+    #     b"Hello",  # 普通字符串
+    #     b"Base64",  # 偶数字符
+    #     b"",  # 空输入
+    # ]
 
-    for test in test_cases:
-        print(f"Input: {test} -> Encoded: {kbase64_encode(test)} -> Decode: {kbase64_decode(kbase64_encode(test))}")
+    # for test in test_cases:
+    #     print(
+    #         f"Input: {test} -> Encoded: {kbase64_encode(test)} -> Decode: {kbase64_decode(kbase64_encode(test))}"
+    #     )
+
+    result = kbase64_decode("BtvUlNpNkANFpkh(GE)^YH#%aKzo/PvHrr)n(V/vaQ(=")
+    print(result.hex())
+
+    print(base64_table[0x25])
