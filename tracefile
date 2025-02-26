@@ -1,9 +1,4 @@
-import phoenixAES
-from itertools import islice
-from keyN_to_key0 import aes_key_revese
 
-# debug 第一行提供正确的密文
-cipherText = """
 E520BC0B56D1BE5AF37B7C0E29C5CC0C
 E545BC0BDCD1BE5AF37B7CE729C5F50C
 E520550B56CFBE5ADB7B7C0E29C5CC43
@@ -205,24 +200,3 @@ E504BC0B0DD1BE5AF37B7CD029C5010C
 4120BC0B56D1BEB2F37B4E0E2991CC0C
 D120BC0B56D1BE1EF37BFF0E29C0CC0C
 E520270B5621BE5AEA7B7C0E29C5CC4D
-"""
-
-with open("tracefile", "wb+") as f:
-    f.write(cipherText.encode("utf-8"))
-    f.seek(0)
-    data = list(islice(f, 1, 2))[0].strip(b"\n")
-    round_key_len = len(data)
-
-
-# 参数 3 代表解密
-result = phoenixAES.crack_file("tracefile", [], True, False, 3)
-if result is not None:
-    if "." in result:
-        print("result is", result)
-        raise ValueError("Warning! need more dfa cipherText!!!")
-    else:
-        # debug 因为phoenixAES 只能处理aes128的, 所以得到的是K10
-        n = 10
-        print(f"K{n}: {result}")
-        print("aes_key_reverse")
-        aes_key_revese(result, n)

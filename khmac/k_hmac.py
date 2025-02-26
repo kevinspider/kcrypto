@@ -30,6 +30,8 @@ def hmac_key_extend(key: bytes, group_len: int):
     # 判断当前密钥长度是否大于分组长度, 如果小于,则填充
     if len(key) < group_len:
         key = key + b"\x00" * (group_len - len(key))
+    elif len(key) == group_len:
+        key = key
     else:
         # todo 如果大于则使用密钥hash之后的结果作为密钥, 再进行填充
         raise
@@ -72,7 +74,7 @@ def khmac(message: bytes, key: bytes, digest_mod: str):
     return hash_result2
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     result = khmac("hello".encode("utf-8"), "kevinSpider".encode("utf-8"), "md5")
     print("debug", result)
 
