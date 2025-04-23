@@ -64,6 +64,8 @@ aes
 import struct
 from enum import Enum
 
+from kutils.utils import array_hex_dump
+
 
 class AesMode(Enum):
     ECB = 1
@@ -495,9 +497,9 @@ def aes_key_schedule(master_key: bytes, nk: int) -> list:
             生成子密钥的时候, 是逐4字节生成的;
             例如, aes128 是 44 *4
         返回
-            aes128-> 11 * 16 字节 对应 K0 - K10 一共11个, k0 是主密钥
-            aes192-> 13 * 16字节 对应 K0 - K12 一共13个, k0-k1的一半 是主密钥
-            aes256-> 15 * 16字节 K0 - K14 一共15个, k0-k1 是主密钥
+            aes128-> 11 * 16 字节 对应 K0 - K10 一共11个, k0 是主密钥; 一共 176 字节
+            aes192-> 13 * 16字节 对应 K0 - K12 一共13个, k0-k1的一半 是主密钥; 一共 208 字节
+            aes256-> 15 * 16字节 K0 - K14 一共15个, k0-k1 是主密钥; 一共 240 字节
     """
     # 初始化计算子密钥W 二维数组的形式, round_keys 44 个元素, 每个元素 4个字节[]
     # round_keys = [[x, x, x, x], ...]
@@ -530,7 +532,7 @@ def aes_key_schedule(master_key: bytes, nk: int) -> list:
         else:
             round_keys[i] = xor_array(round_keys[i - 1], round_keys[i - nk])
 
-    # show_round_keys(round_keys, loop_num)
+    show_round_keys(round_keys, loop_num)
     return round_keys
 
 
@@ -545,9 +547,13 @@ def aes_encrypt_ecb(message: bytes, master_key: bytes, pad: PadMode) -> str:
     # nk 初始化 4 or 6 or 8 控制了密钥编排中g函数的使用
     nk = len(master_key) // 4
     # 根据key长度确定循环次数
+    # aes 128; key is 16 bytes, loop is 10
+    # aes 192; key is 24 bytes, loop is 12
+    # aes 256; key is 32 bytes, loop is 14
     loop_num = key_len_loop_num[len(master_key)]
     # 生成子密钥 round_keys 4个元素组成了一个子密钥K, 第一次使用K00, 一次类推
     round_keys = aes_key_schedule(master_key, nk)
+
     # 填充
     if pad == PadMode.pkcs7_pad:
         message = pad_pkcs7(message, 16)
@@ -568,7 +574,10 @@ def aes_encrypt_ecb(message: bytes, master_key: bytes, pad: PadMode) -> str:
         state = [chunk[i : i + 4] for i in range(0, len(chunk), 4)]
         # 再将list[bytes] 转为 list[list[int]]
         state = [list(struct.unpack(">4B", each)) for each in state]
-        print(f"state {len(state)}", state)
+        # print(f"state {len(state)}", state)
+        print("加密明文:")
+        for each in state:
+            array_hex_dump(each, (1, 4))
         # debug 轮密钥加 state和 master_key输入部分
         # debug 初始化密钥轮相加
         state = add_round_keys(state, round_keys[0:4])
@@ -612,8 +621,14 @@ def aes_encrypt_cbc(
     :return: hexString
     """
     # nk 初始化 4 or 6 or 8 控制了密钥编排中g函数的使用
+    # aes 128; nk = 4
+    # aes 192; nk = 6
+    # aes 256; nk = 8
     nk = len(master_key) // 4
     # 根据key长度确定循环次数
+    # aes 128; key is 16 bytes, loop is 10
+    # aes 192; key is 24 bytes, loop is 12
+    # aes 256; key is 32 bytes, loop is 14
     loop_num = key_len_loop_num[len(master_key)]
     # 生成子密钥 round_keys 4个元素组成了一个子密钥K, 第一次使用K00, 一次类推
     round_keys = aes_key_schedule(master_key, nk)
@@ -642,7 +657,10 @@ def aes_encrypt_cbc(
         state = [chunk[i : i + 4] for i in range(0, len(chunk), 4)]
         # 再将list[bytes] 转为 list[list[int]]
         state = [list(struct.unpack(">4B", each)) for each in state]
-        print(f"state {len(state)}", state)
+        # print(f"state {len(state)}", state)
+        print("加密明文:")
+        for each in state:
+            array_hex_dump(each, (1, 4))
         # important cbc模式, 第一次的时候明文16字节和初始iv进行异或
         for i in range(4):
             state[i] = xor_array(state[i], iv[i])
@@ -725,8 +743,34 @@ if __name__ == "__main__":
     7649abac8119b246cee98e9b12e9197d5086cb9b507219ee95db113a917678b273bed6b8e3c1743b7116e69e222295163ff1caa1681fac09120eca307586e1a7
     """
 
-    message = bytes.fromhex("00112233445566778899101112131415")
-    key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c")
-    iv = bytes.fromhex("000102030405060708090a0b0c0d0e0f")
-    result = aes_encrypt(message, key, iv, AesMode.CBC, PadMode.zero_pad)
-    print(result)
+    # message = bytes.fromhex("00112233445566778899101112131415")
+    # key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c")
+    # iv = bytes.fromhex("000102030405060708090a0b0c0d0e0f")
+    # result = aes_encrypt(message, key, iv, AesMode.CBC, PadMode.zero_pad)
+    # print(result)
+
+    aes_key = [
+        0x8C,
+        0xC1,
+        0xBB,
+        0xC9,
+        0x6B,
+        0xC5,
+        0x66,
+        0xB8,
+        0x5,
+        0x28,
+        0xB0,
+        0x77,
+        0x70,
+        0x44,
+        0xAF,
+        0xE8,
+    ]
+    iv = bytes.fromhex("99303a3a32343a3992923a3b3a999292")
+
+    # 第一次 16 字节 8f2121298d8d8b8a8f29212888232821
+    input = bytes.fromhex("8f2121298d8d8b8a8f29212888232821")
+    key_extend = aes_key_schedule(bytearray(aes_key), 4)
+    for each in key_extend:
+        array_hex_dump(each, (1, 4))

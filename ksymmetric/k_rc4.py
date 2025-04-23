@@ -38,7 +38,7 @@ def krc4(message: bytes, key: bytes):
     return rc4_result.hex()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 加密
     message = "kevinSpider".encode("utf-8")
     key = bytes.fromhex("aabbccddeeff")

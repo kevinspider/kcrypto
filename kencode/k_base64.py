@@ -1,7 +1,7 @@
 # base64 编码表
 base64_table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 # 更改编码表
-base64_table = "abcdefghijklmnopqrstuvwxyz!@#$%^&*()ABCDEFGHIJKLMNOPQRSTUVWXYZ+/"
+# base64_table = "abcdefghijklmnopqrstuvwxyz!@#$%^&*()ABCDEFGHIJKLMNOPQRSTUVWXYZ+/"
 
 
 def kbase64_encode(message: bytes) -> str:
@@ -55,6 +55,7 @@ def kbase64_decode(cipher: str) -> bytes:
 
     base64_reverse_map = {char: idx for idx, char in enumerate(base64_table)}
     base64_reverse_map["="] = 64  # '=' 表示填充字符
+    print(base64_reverse_map)
 
     # 初始化变量
     counts = 0
