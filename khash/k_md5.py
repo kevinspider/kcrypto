@@ -56,11 +56,11 @@ def pad_message(message: bytes) -> bytes:
     # 计算 bytes -> bit 长度
     original_bit_len = len(message) * 8
     message += b"\x80"
-    # 因为尾部要增加8字节的message长度,所以计算的时候先+8
-    # 64字节 * 8bit = 512bit
+    # 因为尾部要增加 8 字节的 message 长度, 所以计算的时候先 + 8
+    # 64 字节 * 8bit = 512bit
     while (len(message) + 8) % 64 != 0:
         message += b"\x00"
-    # debug 填充完成后, 尾部增加长度, 将长度使用小端序<, Q是8字节打包, 插入message尾部
+    # debug 填充完成后, 尾部增加长度, 将长度使用小端序 <, Q 是 8 字节打包, 插入 message 尾部
     message += original_bit_len.to_bytes(8, "little")
     # message += struct.pack("<Q", original_bit_len)
     return message
@@ -84,18 +84,19 @@ def kmd5(message: bytes) -> str:
     # 第一步, 进行填充
     message = pad_message(message)
 
-    # 每次计算512bit 64字节, 每64字节一个元素
+    # 每次计算 512bit 64 字节, 每 64 字节一个元素
     chunks = [message[i : i + 64] for i in range(0, len(message), 64)]
 
-    # 每次计算512bit 64字节
+    # 每次计算 512bit 64 字节
     for chunk in chunks:
-        # 将64字节分成16份,每一份I就是四字节, 小端序
+        # 将 64 字节分成 16 份, 每一份 I 就是四字节, 小端序
         words = struct.unpack("<16I", chunk)
 
         a, b, c, d = a0, b0, c0, d0
 
-        # debug md5 64轮都是不一样的计算
+        # debug md5 64 轮都是不一样的计算
         # Round1 使用的都是原始的魔数
+        # debug 这里可以作为一个定位点来找入参, 0xD76AA478 FF 函数进去以后, 也只有 words[0] 是未知的;
         a = FF(a, b, c, d, words[0], 7, 0xD76AA478)
         d = FF(d, a, b, c, words[1], 12, 0xE8C7B756)
         c = FF(c, d, a, b, words[2], 17, 0x242070DB)
@@ -172,7 +173,7 @@ def kmd5(message: bytes) -> str:
         c0 = (c0 + c) & 0xFFFFFFFF
         d0 = (d0 + d) & 0xFFFFFFFF
 
-        print("md5 update: ", struct.pack("<4I", a0, b0, c0, d0).hex())
+        print("md5 update:", struct.pack("<4I", a0, b0, c0, d0).hex())
 
     md5_result = struct.pack("<4I", a0, b0, c0, d0)
     return md5_result.hex()
@@ -182,7 +183,7 @@ if __name__ == "__main__":
 
     # input_str = "kevinSpider"
     # result = kmd5(input_str.encode("utf-8"))
-    # print("md5 final: ", result)
+    # print("md5 final:", result)
 
     # 测试 最右魔改 MD5
     # 更改魔数

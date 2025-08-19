@@ -718,59 +718,15 @@ def aes_encrypt(
     if mode == AesMode.ECB:
         return aes_encrypt_ecb(message, master_key, pad)
     elif mode == AesMode.CBC:
+        assert master_iv is not None
         return aes_encrypt_cbc(message, master_key, master_iv, pad)
     else:
         raise ValueError("unsupport AesMode, just AesMode.CBC or AesMode.EBC")
 
 
 if __name__ == "__main__":
-    # message = bytes.fromhex("00112233445566778899aabbccddeeff")
-    # print("message is", message.hex())
-    # key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c2b7e151628aed2a6abf7158809cf4f3c")
-    # print("master_key is", key.hex())
-    # result = aes_encrypt_ecb(message, key, PadMode.pkcs7_pad)
-    # print("aes_result", result)
-    # hexdump(bytes.fromhex(result))
+    message = bytes.fromhex("21d214c2c080fdec3d4263c0a6d7807797ef71d4b5ba6cafa5e6c9fa4f9cde44")
+    key = bytes.fromhex("6845594D5977705579484A764B5A5476")
 
-    """
-    key is
-    2b7e151628aed2a6abf7158809cf4f3c
-    iv is
-    000102030405060708090a0b0c0d0e0f
-    message is
-    00112233445566778899101112131415
-    result is
-    7649abac8119b246cee98e9b12e9197d5086cb9b507219ee95db113a917678b273bed6b8e3c1743b7116e69e222295163ff1caa1681fac09120eca307586e1a7
-    """
-
-    # message = bytes.fromhex("00112233445566778899101112131415")
-    # key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c")
-    # iv = bytes.fromhex("000102030405060708090a0b0c0d0e0f")
-    # result = aes_encrypt(message, key, iv, AesMode.CBC, PadMode.zero_pad)
-    # print(result)
-
-    aes_key = [
-        0x8C,
-        0xC1,
-        0xBB,
-        0xC9,
-        0x6B,
-        0xC5,
-        0x66,
-        0xB8,
-        0x5,
-        0x28,
-        0xB0,
-        0x77,
-        0x70,
-        0x44,
-        0xAF,
-        0xE8,
-    ]
-    iv = bytes.fromhex("99303a3a32343a3992923a3b3a999292")
-
-    # 第一次 16 字节 8f2121298d8d8b8a8f29212888232821
-    input = bytes.fromhex("8f2121298d8d8b8a8f29212888232821")
-    key_extend = aes_key_schedule(bytearray(aes_key), 4)
-    for each in key_extend:
-        array_hex_dump(each, (1, 4))
+    result = aes_encrypt_ecb(message, key, PadMode.pkcs7_pad)
+    print(result)

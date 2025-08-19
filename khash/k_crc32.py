@@ -1,4 +1,4 @@
-# 无论输入多长, 最终结果都是一个4字节的hex crc32
+# 无论输入多长, 最终结果都是一个 4 字节的 hex crc32
 
 
 # 两种实现方法, 计算法和查表法,
@@ -15,17 +15,17 @@
 def reverse_bits(value: int, bit_len: int):
     """
     :param value: 待反转的数字
-    :param bit_len: 要反转的bit总数
+    :param bit_len: 要反转的 bit 总数
     :return: 反转后的结果
     :example
-     二进制形式的制定bit长度反转, 按照制定的bit_len将输入转为二进制, 再从右到左读取
+     二进制形式的制定 bit 长度反转, 按照制定的 bit_len 将输入转为二进制, 再从右到左读取
      输入 0x86 -> 0b 10000110
      结果 0x61 -> 0b 01100001
     """
 
     reverse_value = 0
     for i in range(0, bit_len):
-        reverse_value += ((value >> i) & 1) << (bit_len - 1 - i)
+        reverse_value += ((value>> i) & 1) << (bit_len - 1 - i)
     return reverse_value
 
 
@@ -37,19 +37,19 @@ def kcrc32(message: bytes) -> str:
     for byte in message:
         crc ^= byte
         for _ in range(8):
-            # debug crc是奇数
+            # debug crc 是奇数
             if crc & 1 == 1:
-                crc = (crc >> 1) ^ key
+                crc = (crc>> 1) ^ key
             # debug crc 是偶数
             else:
                 crc = crc >> 1
-    # debug python里面的取反操作
+    # debug python 里面的取反操作
     crc32_result = ~crc & 0xFFFFFFFF
     return crc32_result.to_bytes(4, 'big').hex()
 
 
 # debug 简化 kcrc32_poly 使用查表法实现
-# debug 查表法中也会出现关键字 0x04c11db7, table 第一项为0x0, 第二项就是 0x04c11db7
+# debug 查表法中也会出现关键字 0x04c11db7, table 第一项为 0x0, 第二项就是 0x04c11db7
 def kcrc32_table(message: bytes) -> str:
     crc = 0xFFFFFFFF
     table = [0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9, 0x130476dc, 0x17c56b6b, 0x1a864db2, 0x1e475005, 0x2608edb8,
@@ -93,8 +93,8 @@ def kcrc32_table(message: bytes) -> str:
     return crc.to_bytes(4, "big").hex()
 
 
-# debug 正向的会使用 0x04c11db7 来生成 256 个4字节表
-# debug poly是多项式缩写
+# debug 正向的会使用 0x04c11db7 来生成 256 个 4 字节表
+# debug poly 是多项式缩写
 def kcrc32_ploy(message: bytes) -> str:
     crc = 0xFFFFFFFF
     poly = 0x04c11db7

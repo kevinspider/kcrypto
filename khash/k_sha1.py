@@ -10,7 +10,7 @@ def pad_message(message: bytes) -> bytes:
     # 计算 bit 长度; bytes len * 8
     original_bit_len = len(message) * 8
     message += b"\x80"
-    # 判断是否满足增加8字节长度后是64字节的整数倍
+    # 判断是否满足增加 8 字节长度后是 64 字节的整数倍
     while (len(message) + 8) % 64 != 0:
         message += b"\x00"
     # debug 填充完成后, 尾部也要填充长度, sha1 长度填充采用的是大端序;
@@ -25,21 +25,21 @@ def ksha1(message: bytes) -> str:
     h1 = 0xEFCDAB89
     h2 = 0x98BADCFE
     h3 = 0x10325476
-    h4 = 0xC3D2E1F0  # debug 这个是sha1独有的, 其他的和md5一样
+    h4 = 0xC3D2E1F0  # debug 这个是 sha1 独有的, 其他的和 md5 一样
 
     # 第一步, 进行填充
     message = pad_message(message)
 
-    # sha1 分组长度64字节, 将填充后的进行64字节分组
-    chunks = [message[i: i + 64] for i in range(0, len(message), 64)]
+    # sha1 分组长度 64 字节, 将填充后的进行 64 字节分组
+    chunks = [message[i : i + 64] for i in range(0, len(message), 64)]
 
-    # 第二步, 处理每个 64字节分组
+    # 第二步, 处理每个 64 字节分组
     for chunk in chunks:
-        # 待扩展的表w 80个, 每个元素4字节
+        # 待扩展的表 w 80 个, 每个元素 4 字节
         w = [0] * 80
-        # 将64字节转为16个4字节, 并使用大端序排列
-
-        # debug w[0:16] 赋值 这里的 w[0:16] 是将一个chunk 64字节打包进去
+        # 将 64 字节转为 16 个 4 字节, 并使用大端序排列
+        # debug w[0:16] 赋值 这里的 w[0:16] 是将一个 chunk 64 字节打包进去
+        # debug 这里的前 16 个四字节是明文
         w[0:16] = struct.unpack(">16I", chunk)
         # for i in range(16):
         #     w[i] = int.from_bytes(chunk[4 * i: 4 * i + 4], "big")
@@ -55,9 +55,9 @@ def ksha1(message: bytes) -> str:
         d = h3
         e = h4
 
-        # 80轮主循环
+        # 80 轮主循环
         for i in range(80):
-            # debug sha1 每20轮是一样的计算
+            # debug sha1 每 20 轮是一样的计算
             if 0 <= i <= 19:
                 f = (b & c) | (~b & d)
                 k = 0x5A827999
@@ -72,7 +72,7 @@ def ksha1(message: bytes) -> str:
                 k = 0xCA62C1D6
             else:
                 raise
-
+            # debug 这里可以作为一个 sha1 入参的定位点; 0-19 轮的 k 都是 0x5A827999; 0-16 是 sha1 的明文信息;
             temp = (rol32(a, 5) + f + e + k + w[i]) & 0xFFFFFFFF
             e = d
             d = c
@@ -90,6 +90,7 @@ def ksha1(message: bytes) -> str:
 
     sha1_result = struct.pack(">5I", h0, h1, h2, h3, h4)
     return sha1_result.hex()
+
 
 if __name__ == "__main__":
     result = ksha1("kevinSpider".encode("utf-8"))

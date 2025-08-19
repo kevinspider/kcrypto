@@ -6,21 +6,78 @@ import struct
 Tj = {
         0x79cc4519 0 ≤ j ≤ 15
         0x7a879d8a 16 ≤ j ≤ 63
-    } 
+    }
 """
 T = [
-    0x79cc4519, 0x79cc4519, 0x79cc4519, 0x79cc4519, 0x79cc4519, 0x79cc4519, 0x79cc4519, 0x79cc4519,
-    0x79cc4519, 0x79cc4519, 0x79cc4519, 0x79cc4519, 0x79cc4519, 0x79cc4519, 0x79cc4519, 0x79cc4519,
-    0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a,
-    0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a,
-    0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a,
-    0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a,
-    0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a,
-    0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a, 0x7a879d8a,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x79CC4519,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
+    0x7A879D8A,
 ]
 
 
 # debug 计算部分
+
 
 def rol32(value, bits):
     return ((value << bits) | (value >> (32 - bits))) & 0xFFFFFFFF
@@ -31,6 +88,8 @@ def ff(x, y, z, index):
         return x ^ y ^ z
     elif 16 <= index <= 63:
         return (x & y) | (x & z) | (y & z)
+    else:
+        raise ValueError
 
 
 def gg(x, y, z, index):
@@ -38,6 +97,8 @@ def gg(x, y, z, index):
         return x ^ y ^ z
     elif 16 <= index <= 63:
         return (x & y) | (~x & z)
+    else:
+        raise ValueError
 
 
 def p0(x):
@@ -51,15 +112,15 @@ def p1(x):
 
 def pad_message(message: bytes) -> bytes:
     original_bit_len = len(message) * 8
-    message += b'\x80'
+    message += b"\x80"
     while (len(message) + 8) % 64:
-        message += b'\x00'
+        message += b"\x00"
     message += struct.pack(">Q", original_bit_len)
     return message
 
 
 def ksm3(message: bytes) -> str:
-    # 初始化IV
+    # 初始化 IV
     h0 = 0x7380166F
     h1 = 0x4914B2B9
     h2 = 0x172442D7
@@ -72,8 +133,8 @@ def ksm3(message: bytes) -> str:
     # 填充
     message = pad_message(message)
 
-    # 拆分, 64个字节一组
-    chunks = [message[i: i + 64] for i in range(0, len(message), 64)]
+    # 拆分, 64 个字节一组
+    chunks = [message[i : i + 64] for i in range(0, len(message), 64)]
 
     # 运算部分
     for chunk in chunks:
@@ -82,17 +143,21 @@ def ksm3(message: bytes) -> str:
         W = [0] * 68
         W_ = [0] * 64
 
-        # W[0:16] 明文4个字节16个 并使用大端排序
+        # W[0:16] 明文 4 个字节 16 个 并使用大端排序
         W[0:16] = struct.unpack(">16I", chunk)
         # W[16:68]
         for i in range(16, 68):
-            W[i] = p1(W[i - 16] ^ W[i - 9] ^ rol32(W[i - 3], 15)) ^ rol32(W[i - 13], 7) ^ W[i - 6]
+            W[i] = (
+                p1(W[i - 16] ^ W[i - 9] ^ rol32(W[i - 3], 15))
+                ^ rol32(W[i - 13], 7)
+                ^ W[i - 6]
+            )
 
         # W_[0:64]
         for i in range(64):
             W_[i] = W[i] ^ W[i + 4]
 
-        # a-h 为4字节寄存器
+        # a-h 为 4 字节寄存器
         a = h0
         b = h1
         c = h2
@@ -102,17 +167,18 @@ def ksm3(message: bytes) -> str:
         g = h6
         h = h7
 
-        # debug 主循环 64轮
+        # debug 主循环 64 轮
         for j in range(64):
-            # debug 中间变量ss1,ss2,tt1,tt2
-            # SS1 ← ((A ≪ 12) + E + (Tj ≪ j)) ≪ 7 debug 这里的j会超过32bit 算法文档中没有 %32 实际需要
+            # debug 中间变量 ss1,ss2,tt1,tt2
+            # SS1 ← ((A ≪ 12) + E + (Tj ≪ j)) ≪ 7 debug 这里的 j 会超过 32bit 算法文档中没有 %32 实际需要
             ss1 = rol32(rol32(a, 12) + e + rol32(T[j], j % 32) & 0xFFFFFFFF, 7)
             # SS2 ← SS1 ⊕ (A ≪ 12)
             ss2 = ss1 ^ rol32(a, 12)
             # TT1 ← FF(A, B, C, j) + D + SS2 + W′[j]
-            tt1 = ff(a, b, c, j) + d + ss2 + W_[j] & 0xFFFFFFFF
+            tt1 = (ff(a, b, c, j) + d + ss2 + W_[j]) & 0xFFFFFFFF
             # TT2 ← GG(E, F, G, j) + H + SS1 + Wj
-            tt2 = gg(e, f, g, j) + h + ss1 + W[j] & 0xFFFFFFFF
+            # debug 可以作为定位点, 找到 sm3 的输入内容
+            tt2 = (gg(e, f, g, j) + h + ss1 + W[j]) & 0xFFFFFFFF
             # D ← C
             d = c
             # C ← B ≪ 9
@@ -144,7 +210,7 @@ def ksm3(message: bytes) -> str:
     return sm3_result.hex()
 
 
-if __name__ == '__main__':
-    inputValue = "kevinSpider"
+if __name__ == "__main__":
+    inputValue = "/rest/n/feed/hot19917172646b5a97d5fb13af5835f8aa"
     result = ksm3(inputValue.encode("utf-8"))
-    print(result)
+    print("sm3 result", result)

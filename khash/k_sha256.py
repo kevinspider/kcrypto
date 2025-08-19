@@ -80,7 +80,7 @@ def pad_message(message: bytes) -> bytes:
     message += b"\x80"
     while (len(message) + 8) % 64 != 0:
         message += b"\x00"
-    # 添加8个字节,大端排序,填充输入明文的bit长度
+    # 添加 8 个字节, 大端排序, 填充输入明文的 bit 长度
     message += struct.pack(">Q", original_bit_len)
     return message
 
@@ -99,23 +99,24 @@ def ksha256(message: bytes) -> str:
     # 第一步, 进行填充
     message = pad_message(message)
 
-    # 分组长度为 64 字节 每个chunk; chunks = [chunk0, chunk2...]
+    # 分组长度为 64 字节 每个 chunk; chunks = [chunk0, chunk2...]
     chunks = [message[i : i + 64] for i in range(0, len(message), 64)]
 
     print("填充后, message:", message.hex())
 
     # 第二步, 处理每个分组
     for chunk in chunks:
-        # 待扩展的表, 64个 W表
+        # 待扩展的表, 64 个 W 表
         W = [0] * 64
-        # debug w[0:16] chunk 64字节转为16个4字节, 大端排序
+        # debug w[0:16] chunk 64 字节转为 16 个 4 字节, 大端排序
+        # debug 这里的 W 头部 64 个字节是输入明文
         W[0:16] = struct.unpack(">16I", chunk)
         # debug w[16:64] 需要计算
         for i in range(16, 64):
             s0 = ror32(W[i - 15], 7) ^ ror32(W[i - 15], 18) ^ (W[i - 15] >> 3)
             s1 = ror32(W[i - 2], 17) ^ ror32(W[i - 2], 19) ^ (W[i - 2] >> 10)
             W[i] = (W[i - 16] + s0 + W[i - 7] + s1) & 0xFFFFFFFF
-        # 到这里W表也是64个
+        # 到这里 W 表也是 64 个
 
         # 初始化缓冲区
         a = h0
@@ -127,7 +128,7 @@ def ksha256(message: bytes) -> str:
         g = h6
         h = h7
 
-        # 64轮主循环
+        # 64 轮主循环
         for i in range(64):
             # debug sha256 64 轮一样的计算
             # use e
@@ -135,6 +136,11 @@ def ksha256(message: bytes) -> str:
             # use e f g
             ch = (e & f) ^ (~e & g)
             # use h and K table
+            # 定位 sha256 入参的算法点; 通过 K[0] 找到参与运算的参数, 因为当 K[0] 使用的时候, 必定是循环的第一次, 所以此时都是定值, 排除法就可以找到明文入参;
+            if i == 0:
+                print(
+                    f"debug sha256 start loop:{i} h:{hex(h)} s1:{hex(s1)} ch:{hex(ch)} K[{i}]={hex(K[i])} h + s1 + ch + K[{i}] = {hex(h + s1 + ch + K[i])}"
+                )
             temp1 = (h + s1 + ch + K[i] + W[i]) & 0xFFFFFFFF
             # use a
             s0 = ror32(a, 2) ^ ror32(a, 13) ^ ror32(a, 22)
@@ -160,7 +166,7 @@ def ksha256(message: bytes) -> str:
         h6 = (h6 + g) & 0xFFFFFFFF
         h7 = (h7 + h) & 0xFFFFFFFF
 
-        # h中保存了每次计算每个分组的结果 缓冲区
+        # h 中保存了每次计算每个分组的结果 缓冲区
         print("sha256 update", struct.pack(">8I", h0, h1, h2, h3, h4, h5, h6, h7).hex())
 
     sha256_result = struct.pack(">8I", h0, h1, h2, h3, h4, h5, h6, h7)
